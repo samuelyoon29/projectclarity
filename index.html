@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Accessibility Communicator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; /* bg-gray-950 */
+        }
+        #status-panel, #video-container {
+            transition: background-color 0.7s ease, border-color 0.7s ease, box-shadow 0.3s ease;
+        }
+        .icon {
+            font-size: 5rem; /* 80px */
+            line-height: 1;
+        }
+        #webcam {
+            width: 100%;
+            height: auto;
+            border-radius: 0.75rem; /* rounded-xl */
+            transform: scaleX(-1); /* Mirror the video */
+        }
+        .live-dot {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .confidence-bar {
+            transition: width 0.5s ease;
+        }
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        .processing-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-white p-4 md:p-8">
+
+    <div class="w-full max-w-5xl text-center mb-8">
+        <h1 class="text-4xl font-bold text-cyan-400">Enhanced Accessibility Communicator</h1>
+        <p class="text-gray-400 mt-2">Real-time, non-verbal communication powered by MediaPipe + AI.</p>
+        <div class="mt-3 flex items-center justify-center gap-2 text-sm text-gray-500">
+            <span id="model-status">🔄 Loading AI models...</span>
+        </div>
+    </div>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div id="video-container" class="bg-gray-900 p-6 rounded-2xl shadow-lg border-2 border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-semibold text-gray-300">Live Camera Feed</h2>
+                <div class="flex items-center gap-3">
+                    <div id="processing-indicator" class="hidden">
+                        <div class="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full processing-spinner"></div>
+                    </div>
+                    <div class="flex items-center gap-2 px-3 py-1 bg-red-600 rounded-full text-sm">
+                        <div class="w-2 h-2 bg-white rounded-full live-dot"></div>
+                        LIVE
+                    </div>
+                </div>
+            </div>
+            <video id="webcam" autoplay playsinline muted></video>
+            
+            <!-- Face Detection Indicator -->
+            <div class="mt-4 flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                    <div id="face-indicator" class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <span id="face-status">No face detected</span>
+                </div>
+                <span id="fps-counter" class="text-gray-500">FPS: --</span>
+            </div>
+        </div>
+
+        <div id="status-panel" class="bg-gray-900 p-6 rounded-2xl shadow-lg border-2 border-gray-700 flex flex-col justify-center">
+            <div class="flex flex-col items-center border-b-2 border-gray-700 pb-6">
+                <h2 class="text-2xl font-semibold text-gray-300 mb-4">Current Emotional State</h2>
+                <div id="emotion-icon" class="icon">😐</div>
+                <p id="emotion-text" class="text-xl mt-4 font-medium text-gray-300">Neutral</p>
+                
+                <!-- Confidence Indicator -->
+                <div class="w-full mt-4">
+                    <div class="flex justify-between text-sm text-gray-400 mb-1">
+                        <span>Confidence</span>
+                        <span id="emotion-confidence">--</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div id="confidence-bar" class="confidence-bar bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center pt-6 mt-2">
+                <h2 class="text-2xl font-semibold text-gray-300 mb-4">Communicator Card</h2>
+                <div id="card-icon" class="icon">⚪</div>
+                <p id="card-text" class="text-xl mt-4 font-medium text-gray-300">No card detected</p>
+                
+                <!-- Color Analysis -->
+                <div class="mt-4 flex items-center gap-3">
+                    <span class="text-sm text-gray-400">Dominant Color:</span>
+                    <div id="color-preview" class="w-6 h-6 rounded-full border-2 border-gray-600" style="background-color: #ffffff;"></div>
+                    <span id="color-hex" class="text-sm font-mono text-gray-300">#FFFFFF</span>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Enhanced Status Messages -->
+    <div class="mt-8 w-full max-w-5xl">
+        <p id="status" class="text-center text-gray-500 h-6 font-semibold">Connecting to Enhanced AI Server...</p>
+        
+        <!-- System Health Panel -->
+        <div id="health-panel" class="mt-4 hidden bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <h3 class="text-lg font-medium text-gray-300 mb-3">System Status</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="flex items-center gap-2">
+                    <div id="mediapipe-status" class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <span>MediaPipe Face Detection</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="emotion-model-status" class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <span>Emotion Recognition Model</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="api-status" class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <span>API Connection</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        // --- Elements ---
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
+        const statusPanel = document.getElementById('status-panel');
+        const videoContainer = document.getElementById('video-container');
+        
+        const emotionIcon = document.getElementById('emotion-icon');
+        const emotionText = document.getElementById('emotion-text');
+        const emotionConfidence = document.getElementById('emotion-confidence');
+        const confidenceBar = document.getElementById('confidence-bar');
+        
+        const cardIcon = document.getElementById('card-icon');
+        const cardText = document.getElementById('card-text');
+        const colorPreview = document.getElementById('color-preview');
+        const colorHex = document.getElementById('color-hex');
+        
+        const faceIndicator = document.getElementById('face-indicator');
+        const faceStatus = document.getElementById('face-status');
+        const processingIndicator = document.getElementById('processing-indicator');
+        const fpsCounter = document.getElementById('fps-counter');
+        const modelStatus = document.getElementById('model-status');
+        const healthPanel = document.getElementById('health-panel');
+
+        // IMPORTANT: Update this to your deployed backend URL
+        const API_URL = 'https://your-deployed-backend.onrender.com/process_frame'; 
+        const HEALTH_URL = 'https://your-deployed-backend.onrender.com/health';
+        // For local testing: 
+        // const API_URL = 'http://127.0.0.1:5000/process_frame';
+        // const HEALTH_URL = 'http://127.0.0.1:5000/health';
+        
+        let isProcessing = false;
+        let isConnected = false;
+        let frameCount = 0;
+        let lastFpsTime = Date.now();
+        
+        const EMOTION_MAP = {
+            happy: { icon: '😊', text: 'Happy / Content', color: '#10B981' }, // Green-500
+            sad: { icon: '😟', text: 'Sad / Distressed', color: '#EF4444' }, // Red-500
+            neutral: { icon: '😐', text: 'Neutral', color: '#4B5563' }, // Gray-600
+            angry: { icon: '😠', text: 'Angry / Frustrated', color: '#DC2626' }, // Red-600
+            fear: { icon: '😰', text: 'Fearful / Anxious', color: '#7C3AED' }, // Purple-600
+            surprise: { icon: '😲', text: 'Surprised', color: '#F59E0B' }, // Amber-500
+            disgust: { icon: '🤢', text: 'Disgusted', color: '#059669' } // Emerald-600
+        };
+        
+        const CARD_MAP = {
+            'Help/Pain': { icon: '🔴', text: 'Needs Help / In Pain' },
+            'Yes/OK': { icon: '🟢', text: 'Yes / I am OK' },
+            'Food/Drink': { icon: '🔵', text: 'Wants Food / Drink' },
+            'default': { icon: '⚪', text: 'No card detected' }
+        };
+
+        async function checkSystemHealth() {
+            try {
+                const response = await fetch(HEALTH_URL);
+                if (!response.ok) throw new Error('Health check failed');
+                
+                const health = await response.json();
+                
+                // Update health indicators
+                document.getElementById('mediapipe-status').className = 
+                    `w-3 h-3 rounded-full ${health.mediapipe_ready ? 'bg-green-500' : 'bg-red-500'}`;
+                document.getElementById('emotion-model-status').className = 
+                    `w-3 h-3 rounded-full ${health.emotion_model_loaded ? 'bg-green-500' : 'bg-yellow-500'}`;
+                document.getElementById('api-status').className = 'w-3 h-3 bg-green-500 rounded-full';
+                
+                // Update model status
+                if (health.emotion_model_loaded && health.mediapipe_ready) {
+                    modelStatus.textContent = '✅ All AI models loaded successfully';
+                    modelStatus.className = 'text-green-400';
+                } else if (health.mediapipe_ready) {
+                    modelStatus.textContent = '⚠️ MediaPipe ready, emotion model loading...';
+                    modelStatus.className = 'text-yellow-400';
+                } else {
+                    modelStatus.textContent = '❌ System not ready';
+                    modelStatus.className = 'text-red-400';
+                }
+                
+                healthPanel.classList.remove('hidden');
+                return health;
+                
+            } catch (error) {
+                console.error('Health check failed:', error);
+                document.getElementById('api-status').className = 'w-3 h-3 bg-red-500 rounded-full';
+                modelStatus.textContent = '❌ Cannot connect to AI server';
+                modelStatus.className = 'text-red-400';
+                return null;
+            }
+        }
+
+        async function setupWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                
+                // Check system health after webcam is ready
+                setTimeout(checkSystemHealth, 1000);
+                
+            } catch (err) {
+                status.textContent = '❌ Error: Webcam permission denied.';
+                status.classList.remove('text-gray-500');
+                status.classList.add('text-red-400');
+                console.error("Error accessing webcam: ", err);
+            }
+        }
+
+        function updateFPS() {
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsTime >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
+                fpsCounter.textContent = `FPS: ${fps}`;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+        }
+
+        async function processFrame() {
+            if (video.readyState < 2 || isProcessing) return;
+            
+            isProcessing = true;
+            processingIndicator.classList.remove('hidden');
+            
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const data = await response.json();
+                
+                // Handle successful connection
+                if (!isConnected) {
+                    isConnected = true;
+                    status.textContent = '✅ Enhanced AI Connection Successful!';
+                    status.classList.remove('text-gray-500', 'text-red-400');
+                    status.classList.add('text-green-400');
+
+                    setTimeout(() => {
+                        status.textContent = 'Real-time emotion analysis active...';
+                        status.classList.remove('text-green-400');
+                        status.classList.add('text-gray-500');
+                    }, 2500);
+                }
+
+                updateUI(data);
+                updateFPS();
+
+            } catch (error) {
+                if (!isConnected) {
+                    status.textContent = '❌ Error: Cannot connect to enhanced backend.';
+                    status.classList.remove('text-gray-500');
+                    status.classList.add('text-red-400');
+                }
+                
+                // Update face status to show error
+                faceIndicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                faceStatus.textContent = 'Connection error';
+                
+                console.error('Error sending frame to server:', error);
+            } finally {
+                isProcessing = false;
+                processingIndicator.classList.add('hidden');
+            }
+        }
+
+        function updateUI(data) {
+            // Update emotion display
+            const emotion = EMOTION_MAP[data.emotion] || EMOTION_MAP['neutral'];
+            emotionIcon.textContent = emotion.icon;
+            emotionText.textContent = emotion.text;
+            
+            // Update confidence (if provided)
+            if (data.confidence !== undefined) {
+                const confidence = Math.round(data.confidence * 100);
+                emotionConfidence.textContent = `${confidence}%`;
+                confidenceBar.style.width = `${confidence}%`;
+                
+                // Change confidence bar color based on level
+                if (confidence > 70) {
+                    confidenceBar.className = 'confidence-bar bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full';
+                } else if (confidence > 40) {
+                    confidenceBar.className = 'confidence-bar bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full';
+                } else {
+                    confidenceBar.className = 'confidence-bar bg-gradient-to-r from-red-500 to-pink-500 h-2 rounded-full';
+                }
+            } else {
+                emotionConfidence.textContent = '--';
+                confidenceBar.style.width = '0%';
+            }
+            
+            // Update panel colors and effects
+            const panelBorderColor = emotion.color;
+            statusPanel.style.borderColor = panelBorderColor;
+            videoContainer.style.borderColor = panelBorderColor;
+            
+            // Add glow effect for high confidence emotions
+            if (data.confidence && data.confidence > 0.7) {
+                statusPanel.classList.add('glow-effect');
+            } else {
+                statusPanel.classList.remove('glow-effect');
+            }
+
+            // Update color information
+            if (data.color) {
+                colorPreview.style.backgroundColor = data.color;
+                colorHex.textContent = data.color;
+                
+                // Use detected color for background tint
+                const hexToRgb = (hex) => {
+                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return result ? {
+                        r: parseInt(result[1], 16),
+                        g: parseInt(result[2], 16),
+                        b: parseInt(result[3], 16)
+                    } : null;
+                };
+                
+                const rgb = hexToRgb(data.color);
+                if (rgb) {
+                    statusPanel.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+                }
+            }
+
+            // Update card information (if you still want to use this feature)
+            const card = CARD_MAP[data.card_meaning] || CARD_MAP['default'];
+            cardIcon.textContent = card.icon;
+            cardText.textContent = card.text;
+            
+            // Update face detection status
+            if (data.emotion !== 'neutral' || (data.confidence && data.confidence > 0.3)) {
+                faceIndicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                faceStatus.textContent = 'Face detected';
+            } else {
+                faceIndicator.className = 'w-3 h-3 bg-yellow-500 rounded-full';
+                faceStatus.textContent = 'Analyzing...';
+            }
+        }
+
+        // --- Main Execution ---
+        setupWebcam();
+        
+        video.addEventListener('loadeddata', () => {
+            // Start processing frames after a short delay
+            setTimeout(() => {
+                setInterval(processFrame, 400); // Slightly faster for better real-time feel
+            }, 500);
+        });
+
+        // Health check every 30 seconds
+        setInterval(checkSystemHealth, 30000);
+    </script>
+</body>
+</html>
